@@ -1,5 +1,6 @@
 import os
 import openai
+import tempfile
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 import threading
 
@@ -30,7 +31,6 @@ def index():
         processing_status = {"status": "Starting process...", "complete": False}
         processing_results = {"article": "", "images": []}
         
-        # Handle file upload
         if "podcast" not in request.files:
             return "No file part", 400
         
@@ -38,29 +38,32 @@ def index():
         if file.filename == "":
             return "No selected file", 400
         
-        # Save uploaded file
-        audio_path = os.path.join("uploads", file.filename)
-        file.save(audio_path)
-
         def process_audio():
             global processing_status, processing_results
             try:
-                processing_status["status"] = "Transcribing audio..."
-                transcript = transcribe_audio(audio_path)
+                # Create a temporary file
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    file.save(temp_file.name)
+                    
+                    processing_status["status"] = "Transcribing audio..."
+                    transcript = transcribe_audio(temp_file.name)
+                    
+                    processing_status["status"] = "Generating magazine article..."
+                    magazine_article = generate_magazine_style_article(transcript)
+                    
+                    processing_status["status"] = "Creating illustrations..."
+                    images = generate_images_from_text(transcript)
+                    
+                    # Store results in global variable
+                    processing_results["article"] = magazine_article
+                    processing_results["images"] = images
+                    
+                    processing_status["status"] = "Complete!"
+                    processing_status["complete"] = True
                 
-                processing_status["status"] = "Generating magazine article..."
-                magazine_article = generate_magazine_style_article(transcript)
-                
-                processing_status["status"] = "Creating illustrations..."
-                images = generate_images_from_text(transcript)
-                
-                # Store results in global variable
-                processing_results["article"] = magazine_article
-                processing_results["images"] = images
-                
-                processing_status["status"] = "Complete!"
-                processing_status["complete"] = True
-                
+                # Clean up the temporary file
+                os.unlink(temp_file.name)
+                    
             except Exception as e:
                 print(f"Error in process_audio: {e}")
                 processing_status["status"] = f"Error: {str(e)}"
@@ -160,7 +163,4 @@ def generate_images_from_text(transcript: str) -> list:
     return images
 
 if __name__ == "__main__":
-    # Create the uploads folder if it doesn't exist
-    os.makedirs("uploads", exist_ok=True)
-
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
