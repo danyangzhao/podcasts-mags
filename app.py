@@ -37,21 +37,42 @@ def index():
         file = request.files["podcast"]
         if file.filename == "":
             return "No selected file", 400
+            
+        # Debug logging for file information
+        print(f"Original filename: {file.filename}")
+        print(f"File content type: {file.content_type}")
+        
+        # Check file extension
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        print(f"Detected extension: {file_ext}")
+        
+        if file_ext not in SUPPORTED_FORMATS:
+            error_msg = f"Unsupported file format. Please upload one of these formats: {', '.join(SUPPORTED_FORMATS)}"
+            return error_msg, 400
         
         # Save the file data
         file_data = file.read()
+        print(f"File data size: {len(file_data)} bytes")
         
         def process_audio():
             global processing_status, processing_results
             try:
-                # Create a temporary file and write the saved data to it
-                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                # Create a temporary file with the correct extension
+                with tempfile.NamedTemporaryFile(suffix=f'.{file_ext}', delete=False) as temp_file:
                     temp_file.write(file_data)
                     temp_file.flush()  # Ensure all data is written
                     temp_path = temp_file.name
                 
-                print(f"Temporary file created at: {temp_path}")  # Debug log
-                print(f"File size: {os.path.getsize(temp_path)} bytes")  # Debug log
+                print(f"Temporary file created at: {temp_path}")
+                print(f"Temp file size: {os.path.getsize(temp_path)} bytes")
+                
+                # Verify the file exists and is readable
+                if not os.path.exists(temp_path):
+                    raise Exception(f"Temporary file not found at {temp_path}")
+                
+                with open(temp_path, 'rb') as f:
+                    first_bytes = f.read(4)
+                    print(f"First few bytes of file: {first_bytes.hex()}")
                 
                 processing_status["status"] = "Transcribing audio..."
                 transcript = transcribe_audio(temp_path)
@@ -65,14 +86,13 @@ def index():
                 processing_status["status"] = "Creating illustrations..."
                 images = generate_images_from_text(transcript)
                 
-                # Store results in global variable
                 processing_results["article"] = magazine_article
                 processing_results["images"] = images
                 
                 processing_status["status"] = "Complete!"
                 processing_status["complete"] = True
                 
-                # Clean up the temporary file
+                # Clean up
                 try:
                     os.unlink(temp_path)
                 except Exception as e:
@@ -108,23 +128,30 @@ def transcribe_audio(audio_path: str) -> str:
     Send the audio file to the Whisper API for transcription
     """
     try:
-        print(f"Starting transcription of file: {audio_path}")  # Debug log
+        print(f"Starting transcription of file: {audio_path}")
+        print(f"File exists: {os.path.exists(audio_path)}")
+        print(f"File size: {os.path.getsize(audio_path)} bytes")
         
         with open(audio_path, "rb") as audio_file:
+            # Read first few bytes to verify file content
+            first_bytes = audio_file.read(4)
+            audio_file.seek(0)  # Reset file pointer to beginning
+            print(f"First few bytes of file before API call: {first_bytes.hex()}")
+            
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
                 response_format="text"
             )
             
-            if not transcript or not transcript.text:
+            if not transcript:
                 raise Exception("Transcription returned empty result")
                 
-            print(f"Transcription successful. Length: {len(transcript.text)}")  # Debug log
+            print(f"Transcription successful. Length: {len(transcript.text)}")
             return transcript.text
             
     except Exception as e:
-        print(f"Error in transcribe_audio: {str(e)}")  # Debug log
+        print(f"Error in transcribe_audio: {str(e)}")
         raise Exception(f"Transcription failed: {str(e)}")
 
 def generate_magazine_style_article(transcript: str) -> str:
