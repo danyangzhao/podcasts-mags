@@ -7,6 +7,9 @@ import tempfile
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session management
 
+# Define supported audio formats
+SUPPORTED_FORMATS = {'mp3', 'wav', 'm4a', 'mp4', 'mpeg', 'mpga', 'webm'}
+
 # Configure the OpenAI API key (assuming you've set an environment variable)
 client = openai.OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
