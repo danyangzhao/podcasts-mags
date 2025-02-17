@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Processing Your Podcast</title>
+    <style>
+        .progress-container {
+            max-width: 600px;
+            margin: 50px auto;
+            text-align: center;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-container">
+        <h2>Processing Your Podcast</h2>
+        <p id="statusMessage">Starting process...</p>
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        function checkProgress() {
+            fetch('/progress')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('statusMessage').textContent = data.status;
+                    if (data.complete) {
+                        // Add a small delay before redirecting to ensure session is updated
+                        setTimeout(() => {
+                            window.location.href = '/results';
+                        }, 1000);
+                    } else {
+                        setTimeout(checkProgress, 1000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('statusMessage').textContent = 'Error checking progress';
+                });
+        }
+
+        // Start checking progress immediately
+        checkProgress();
+    </script>
+</body>
+</html> 
