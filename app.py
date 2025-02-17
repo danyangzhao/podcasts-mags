@@ -150,8 +150,8 @@ def transcribe_audio(audio_path: str) -> str:
             if not transcript:
                 raise Exception("Transcription returned empty result")
                 
-            print(f"Transcription successful. Length: {len(transcript.text)}")
-            return transcript.text
+            print(f"Transcription successful. Length: {len(transcript)}")
+            return transcript  # Remove .text as transcript is already a string
             
     except Exception as e:
         print(f"Error in transcribe_audio: {str(e)}")
