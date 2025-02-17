@@ -50,9 +50,15 @@ def index():
                     temp_file.flush()  # Ensure all data is written
                     temp_path = temp_file.name
                 
+                print(f"Temporary file created at: {temp_path}")  # Debug log
+                print(f"File size: {os.path.getsize(temp_path)} bytes")  # Debug log
+                
                 processing_status["status"] = "Transcribing audio..."
                 transcript = transcribe_audio(temp_path)
                 
+                if not transcript:
+                    raise Exception("Transcription returned empty result")
+                    
                 processing_status["status"] = "Generating magazine article..."
                 magazine_article = generate_magazine_style_article(transcript)
                 
@@ -73,9 +79,10 @@ def index():
                     print(f"Error cleaning up temporary file: {e}")
                     
             except Exception as e:
-                print(f"Error in process_audio: {e}")
+                print(f"Error in process_audio: {str(e)}")
                 processing_status["status"] = f"Error: {str(e)}"
                 processing_status["complete"] = True
+                processing_results["article"] = f"An error occurred: {str(e)}"
 
         # Start processing in background
         thread = threading.Thread(target=process_audio)
@@ -101,50 +108,65 @@ def transcribe_audio(audio_path: str) -> str:
     Send the audio file to the Whisper API for transcription
     """
     try:
+        print(f"Starting transcription of file: {audio_path}")  # Debug log
+        
         with open(audio_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
-                file=audio_file
+                file=audio_file,
+                response_format="text"
             )
-        return transcript.text
+            
+            if not transcript or not transcript.text:
+                raise Exception("Transcription returned empty result")
+                
+            print(f"Transcription successful. Length: {len(transcript.text)}")  # Debug log
+            return transcript.text
+            
     except Exception as e:
-        print(f"Error transcribing audio: {e}")
-        return ""
+        print(f"Error in transcribe_audio: {str(e)}")  # Debug log
+        raise Exception(f"Transcription failed: {str(e)}")
 
 def generate_magazine_style_article(transcript: str) -> str:
     """
     Use GPT to transform the transcript into a stylized magazine article
     """
-    prompt = f"""
-    You are an editor for a popular magazine. Take the following transcript
-    and turn it into a well-structured, engaging magazine-style article. 
-    Ignore the podcast's title and host.
-    Ignore and do not include advertisements for products or services. 
-    Advertisements are usually at the beginning of the podcasts and contain links to the products or services.
-    The transcript could contain multiple speakers and topics. 
-    Make each topic into a separate section.
-    
-    Use proper HTML formatting with these elements:
-    - Wrap the title in <h1> tags
-    - Use <h2> for section headings
-    - Use <p> tags for paragraphs
-    - Use <blockquote> for important quotes from people quoted in the transcript
-    - Break up the text into shorter paragraphs for readability
-    
-    
-    Transcript: {transcript}
-    """
+    if not transcript:
+        return "Error: No transcript was provided for processing."
+        
     try:
+        prompt = f"""
+        You are an expert writer for a popular magazine. Take the following transcript
+        and turn it into a well-structured, engaging magazine-style article.
+        
+        Use proper HTML formatting with these elements:
+        - Wrap the title in <h1> tags
+        - Use <h2> for section headings
+        - Use <p> tags for paragraphs
+        - Use <blockquote> for important quotes
+        - Break up the text into shorter paragraphs for readability
+        
+        Ignore the podcast's title and host.
+        Ignore advertisements for products or services.
+        
+        Transcript: {transcript}
+        """
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini", 
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,
+            max_tokens=2000,  # Increased token limit
             temperature=0.7
         )
+        
+        if not response.choices or not response.choices[0].message.content:
+            raise Exception("GPT response was empty")
+            
         return response.choices[0].message.content
+        
     except Exception as e:
-        print(f"Error generating magazine article: {e}")
-        return "Error generating article."
+        print(f"Error in generate_magazine_style_article: {str(e)}")  # Debug log
+        return f"Error generating article: {str(e)}"
 
 def generate_images_from_text(transcript: str) -> list:
     """
