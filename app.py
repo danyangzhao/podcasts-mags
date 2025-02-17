@@ -1,8 +1,8 @@
 import os
 import openai
-import tempfile
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 import threading
+import tempfile
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session management
@@ -38,31 +38,39 @@ def index():
         if file.filename == "":
             return "No selected file", 400
         
+        # Save the file data
+        file_data = file.read()
+        
         def process_audio():
             global processing_status, processing_results
             try:
-                # Create a temporary file
+                # Create a temporary file and write the saved data to it
                 with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                    file.save(temp_file.name)
-                    
-                    processing_status["status"] = "Transcribing audio..."
-                    transcript = transcribe_audio(temp_file.name)
-                    
-                    processing_status["status"] = "Generating magazine article..."
-                    magazine_article = generate_magazine_style_article(transcript)
-                    
-                    processing_status["status"] = "Creating illustrations..."
-                    images = generate_images_from_text(transcript)
-                    
-                    # Store results in global variable
-                    processing_results["article"] = magazine_article
-                    processing_results["images"] = images
-                    
-                    processing_status["status"] = "Complete!"
-                    processing_status["complete"] = True
+                    temp_file.write(file_data)
+                    temp_file.flush()  # Ensure all data is written
+                    temp_path = temp_file.name
+                
+                processing_status["status"] = "Transcribing audio..."
+                transcript = transcribe_audio(temp_path)
+                
+                processing_status["status"] = "Generating magazine article..."
+                magazine_article = generate_magazine_style_article(transcript)
+                
+                processing_status["status"] = "Creating illustrations..."
+                images = generate_images_from_text(transcript)
+                
+                # Store results in global variable
+                processing_results["article"] = magazine_article
+                processing_results["images"] = images
+                
+                processing_status["status"] = "Complete!"
+                processing_status["complete"] = True
                 
                 # Clean up the temporary file
-                os.unlink(temp_file.name)
+                try:
+                    os.unlink(temp_path)
+                except Exception as e:
+                    print(f"Error cleaning up temporary file: {e}")
                     
             except Exception as e:
                 print(f"Error in process_audio: {e}")
