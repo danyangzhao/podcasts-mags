@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>Magazine Article</title>
+    <style>
+        /* Magazine-style typography and layout */
+        body {
+            font-family: Georgia, serif;
+            margin: 0;
+            line-height: 1.6;
+            color: #333;
+        }
+        .article-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            font-weight: bold;
+        }
+        h2 {
+            font-size: 1.8rem;
+            color: #444;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+        h3 {
+            font-size: 1.4rem;
+            color: #666;
+        }
+        p {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        /* Magazine-style image treatments */
+        .image-left {
+            float: left;
+            margin: 0.5rem 1.5rem 1rem 0;
+            max-width: 45%;
+        }
+        .image-right {
+            float: right;
+            margin: 0.5rem 0 1rem 1.5rem;
+            max-width: 45%;
+        }
+        .image-full {
+            width: 100%;
+            margin: 2rem 0;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        /* Pull quotes and highlights */
+        blockquote {
+            font-size: 1.4rem;
+            font-style: italic;
+            border-left: 4px solid #333;
+            padding-left: 1.5rem;
+            margin: 2rem 0;
+            color: #444;
+        }
+        /* First paragraph treatment */
+        .article-container > p:first-of-type::first-letter {
+            float: left;
+            font-size: 3.5rem;
+            padding: 0.1em 0.1em 0 0;
+            line-height: 0.7;
+            color: #222;
+        }
+    </style>
+</head>
+<body>
+    <div class="article-container">
+        <!-- Alternate image placement in the article -->
+        {% if images %}
+            {% for img_url in images %}
+                {% if loop.index0 == 0 %}
+                    <img src="{{ img_url }}" alt="AI-Generated Image" class="image-right">
+                {% elif loop.index0 == 1 %}
+                    <img src="{{ img_url }}" alt="AI-Generated Image" class="image-left">
+                {% else %}
+                    <img src="{{ img_url }}" alt="AI-Generated Image" class="image-full">
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+        
+        <!-- Display stylized text -->
+        {{ article|safe }}
+    </div>
+</body>
+</html>

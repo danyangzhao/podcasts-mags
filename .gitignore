@@ -1,0 +1,11 @@
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore environment variables file
+.env
+
+# Ignore uploads or data files if you don’t want them in your repo
+uploads/
+
+# Etc...
